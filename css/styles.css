@@ -1,0 +1,44 @@
+/* override enyo-core */
+.enyo-fit {
+	padding-top: 50px;
+}
+
+/* override Bootstrap */
+.well {
+	clear: both;
+	margin-bottom: 10px;
+	min-height: 75px;
+	font-size: 16px;
+}
+.well p {
+	font-size: 16px;
+	line-height: 20px;
+}
+.well strong {
+	font-size: 20px;
+	line-height: 24px;
+}
+
+/* app-specific css */
+
+.avatar {
+	width: 75px; 
+	height: 75px; 
+	float: left; 
+	margin-right: 10px;
+	border-radius: 6px;
+	background-position: top left;
+	background-size: 75px 75px;
+	background-repeat: none;
+	box-shadow:
+	    inset 2px 2px 4px rgba(0, 0, 0, 0.35),
+	    inset -2px -2px 4px rgba(255, 255, 255, 0.5);
+}
+
+.github-banner {
+	position: absolute; 
+	top: 0; 
+	right: 0; 
+	border: 0;
+	z-index: 1031;
+}
