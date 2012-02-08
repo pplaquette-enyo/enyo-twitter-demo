@@ -116,6 +116,7 @@ enyo.kind({
 		// no results
 		if(inResponse.results.length == 0) {
 			this.$.alert.setContent("No results found");
+			this.$.alert.setShowing(true);
 		}
 		
 		// remove spinner
