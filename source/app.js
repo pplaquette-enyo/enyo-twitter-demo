@@ -3,7 +3,7 @@ enyo.kind({
 	kind: enyo.Control,
 	components: [
 		// Github ribbon
-		{tag: "a", name: "github", components:[
+		{tag: "a", name: "github", attributes:{href: "https://github.com/girliemac/enyo-twitter-demo", alt: "Fork me on GitHub"}, components:[
 			{tag: "img", classes: "github-banner", src: "https://a248.e.akamai.net/assets.github.com/img/e6bef7a091f5f3138b8cd40bc3e114258dd68ddf/687474703a2f2f73332e616d617a6f6e6177732e636f6d2f6769746875622f726962626f6e732f666f726b6d655f72696768745f7265645f6161303030302e706e67"}
 		]},
 		
@@ -29,10 +29,12 @@ enyo.kind({
 
 	create: function() {
 	    this.inherited(arguments);
-		this.$.github.setAttribute('href', 'https://github.com/girliemac/enyo-twitter-demo');
-		this.$.github.setAttribute('alt', 'Fork me on GitHub');
+		this.distance = 5; // initial geo distance
 	},
 	
+	/* 
+	*** HTML5 Geolocation API 
+	*/
 	getLocation: function() {
 		// disable button
 		this.$.searchButton.setAttribute('disabled', 'disabled');
@@ -63,6 +65,94 @@ enyo.kind({
 		this.search();	
 	},
 	
+	/* 
+	*** Display the geo result
+	*/
+	displayPlace: function(lat, lon) {
+		// https://api.twitter.com/1/geo/search.json?lat=37.783619854&long=-122.3982
+		var url = 'https://api.twitter.com/1/geo/search.json';
+		var geocode = '?lat=' + lat + '&long=' + lon; 
+		var request = new enyo.JsonpRequest({
+		    url: url,
+		    callbackName: "callback"
+		});
+		request.response(enyo.bind(this, 'processPlaceResult'));
+		request.go({
+			lat: lat,
+			long: lon 
+		});
+	},
+	
+	processPlaceResult: function(inRequest, inResponse) {
+		console.log(inResponse);
+		
+		if (!inResponse) return;
+		console.log(inResponse);
+		var name = inResponse.result.places[0].full_name;
+		this.$.geo.setContent('in '+ name);
+	},
+	
+	
+	/* 
+	*** Retrieve tweets with a query
+	*/
+	search: function(position) {	
+		var geo = '';
+		
+		if(position) {
+			var lat = position.coords.latitude;
+			var lon = position.coords.longitude;
+			geo = lat + ',' + lon + ',' + this.distance + 'mi';
+			
+			console.log('lat: '+ lat + ', lon:' +lon);
+			this.displayPlace(lat, lon);
+		}
+		
+		var url = 'http://search.twitter.com/search.json'
+
+		var searchTerm = this.$.searchTerm.hasNode().value;
+		var request = new enyo.JsonpRequest({
+		    url: url,
+		    callbackName: "callback"
+		  });
+		
+		request.response(enyo.bind(this, 'processSearchResults'));
+		request.go({ 	
+			geocode: geo,
+			q: searchTerm
+		});
+	},
+
+	processSearchResults: function(inRequest, inResponse) {
+		if (!inResponse) return;
+		this.$.tweetList.destroyClientControls();
+		enyo.forEach(inResponse.results, this.addTweet, this);
+		this.$.tweetList.render();
+		
+		// No results -- try with a larger radius
+		if(inResponse.results.length == 0) {
+			if (this.distance <= 15) {
+				this.distance += 5;
+				this.$.alert.setContent('No results found. Now trying to find the result in ' + this.distance +' miles radius');	
+				this.$.alert.setShowing(true);
+				window.setTimeout(enyo.bind(this, 'getLocation'), 1500, true);
+				return;	
+			} else {
+				this.$.alert.setContent('No results found.');
+				this.$.alert.setShowing(true);
+			}
+		}
+		
+		// remove spinner
+		this.$.spinner.setShowing(false);
+		
+		// enable button 
+		this.$.searchButton.setAttribute('disabled', null);
+	},
+
+	/* 
+	*** Display each tweet
+	*/
 	addTweet: function(inResult) {
 		var loc = '';
 		if (inResult.location) {
@@ -79,72 +169,5 @@ enyo.kind({
 	    	text: inResult.text,
 			location: loc
 	    });
-	},
-
-	search: function(position) {	
-		var geo = '';
-		if(position) {
-			var lat = position.coords.latitude;
-			var lon = position.coords.longitude;
-			geo = lat + ',' + lon + ',5mi';
-			
-			console.log('lat: '+ lat + ', lon:' +lon);
-			this.displayPlace(lat, lon);
-		}
-		
-		var url = 'http://search.twitter.com/search.json'
-
-		var searchTerm = this.$.searchTerm.hasNode().value;
-		var request = new enyo.JsonpRequest({
-		    url: url,
-		    callbackName: "callback"
-		  });
-		
-		request.response(enyo.bind(this, "processSearchResults"));
-		request.go({ 	
-			geocode: geo,
-			q: searchTerm
-		});
-	},
-
-	processSearchResults: function(inRequest, inResponse) {
-		if (!inResponse) return;
-		this.$.tweetList.destroyClientControls();
-		enyo.forEach(inResponse.results, this.addTweet, this);
-		this.$.tweetList.render();
-		
-		// no results
-		if(inResponse.results.length == 0) {
-			this.$.alert.setContent("No results found");
-			this.$.alert.setShowing(true);
-		}
-		
-		// remove spinner
-		this.$.spinner.setShowing(false);
-		
-		// enable button 
-		this.$.searchButton.setAttribute('disabled', null);
-	},
-	
-	displayPlace: function(lat, lon) {
-		// https://api.twitter.com/1/geo/search.json?lat=37.783619854&long=-122.3982
-		var url = 'https://api.twitter.com/1/geo/search.json';
-		var geocode = '?lat=' + lat + '&long=' + lon; 
-		var request = new enyo.JsonpRequest({
-		    url: url,
-		    callbackName: "callback"
-		});
-		request.response(enyo.bind(this, "processPlaceResult"));
-		request.go({
-			lat: lat,
-			long: lon 
-		});
-	},
-	
-	processPlaceResult: function(inRequest, inResponse) {
-		if (!inResponse) return;
-		console.log(inResponse);
-		var name = inResponse.result.places[0].full_name;
-		this.$.geo.setContent('in '+ name);
 	},
 });
